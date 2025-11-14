@@ -249,3 +249,118 @@ impl XFastTrie {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_single_insert() {
+        let mut trie = XFastTrie::new(8);
+        trie.insert(42);
+        
+        // verify head and tail are set
+        assert!(trie.head_rep.is_some());
+        assert!(trie.tail_rep.is_some());
+        
+        if let Some(head) = &trie.head_rep {
+            if let Ok(head_guard) = head.read() {
+                assert_eq!(head_guard.key, 42);
+            }
+        }
+    }
+
+    #[test]
+    fn test_multiple_inserts() {
+        let mut trie = XFastTrie::new(8);
+        let keys = vec![10, 5, 15, 3, 12];
+        
+        for key in &keys {
+            trie.insert(*key);
+        }
+        
+        // verify head is smallest, tail is largest
+        if let Some(head) = &trie.head_rep {
+            if let Ok(head_guard) = head.read() {
+                assert_eq!(head_guard.key, 3);
+            }
+        }
+        
+        if let Some(tail) = &trie.tail_rep {
+            if let Ok(tail_guard) = tail.read() {
+                assert_eq!(tail_guard.key, 15);
+            }
+        }
+    }
+
+    #[test] 
+    fn test_predecessor() {
+        let mut trie = XFastTrie::new(8);
+        let keys = vec![10, 20, 30, 40];
+        
+        for key in &keys {
+            trie.insert(*key);
+        }
+        
+        // test predecessor queries
+        if let Some(pred) = trie.predecessor(25) {
+            if let Ok(pred_guard) = pred.read() {
+                assert_eq!(pred_guard.key, 20);
+            }
+        }
+        
+        if let Some(pred) = trie.predecessor(35) {
+            if let Ok(pred_guard) = pred.read() {
+                assert_eq!(pred_guard.key, 30);
+            }
+        }
+        
+        // test exact match
+        if let Some(pred) = trie.predecessor(30) {
+            if let Ok(pred_guard) = pred.read() {
+                assert_eq!(pred_guard.key, 30);
+            }
+        }
+    }
+
+    #[test]
+    fn test_successor() {
+        let mut trie = XFastTrie::new(8);
+        let keys = vec![10, 20, 30, 40];
+        
+        for key in &keys {
+            trie.insert(*key);
+        }
+        
+        // test successor queries
+        if let Some(succ) = trie.successor(25) {
+            if let Ok(succ_guard) = succ.read() {
+                assert_eq!(succ_guard.key, 30);
+            }
+        }
+        
+        if let Some(succ) = trie.successor(15) {
+            if let Ok(succ_guard) = succ.read() {
+                assert_eq!(succ_guard.key, 20);
+            }
+        }
+    }
+
+    #[test]
+    fn test_edge_cases() {
+        let mut trie = XFastTrie::new(8);
+        
+        // predecessor of empty trie
+        assert!(trie.predecessor(10).is_none());
+        
+        // insert single key
+        trie.insert(50);
+        
+        // predecessor of smaller value
+        assert!(trie.predecessor(10).is_none());
+        
+        // successor of larger value  
+        assert!(trie.successor(100).is_none());
+    }
+}
