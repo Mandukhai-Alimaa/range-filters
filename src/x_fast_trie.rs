@@ -138,4 +138,114 @@ impl XFastTrie {
 
         None
     }
+
+
+    // insert a key into the x-fast trie
+    fn insert(&mut self, key: Key) {
+
+        // step 1: find the longest prefix
+        let mut low = 0;
+        let mut high = self.no_levels;
+
+        while low < high {
+            let mid = (low + high + 1) / 2;
+            let prefix = key >> (self.no_levels - mid);
+            if self.levels[mid as usize].table.contains_key(&prefix) {
+                low = mid;
+            } else {
+                high = mid - 1;
+            }
+        }
+
+        let best_level = low;
+
+        // step 2: create representative
+        let representative = Arc::new(RwLock::new(RepNode {
+            key,
+            left: None,
+            right: None,
+            bucket: None,
+        }));
+
+        // step 3: create child prefixes from best_level+1 to no_levels
+        for level in (best_level + 1)..=self.no_levels {
+            let prefix = key >> (self.no_levels - level);
+            let new_x_fast_value = XFastValue {
+                left_child: None,
+                right_child: None,
+                representative: Some(representative.clone()),
+            };
+            self.levels[level as usize].table.insert(prefix, new_x_fast_value.clone());
+
+            // update parent's child pointers
+            if level > 1 {
+                let parent_prefix = key >> (self.no_levels - (level - 1));
+                if let Some(mut parent_value) = self.levels[(level - 1) as usize].table.get_mut(&parent_prefix) {
+                    let bit = (key >> (self.no_levels - level)) & 1;
+                    if bit == 0 {
+            
+                        parent_value.left_child = Some(Arc::new(RwLock::new(new_x_fast_value.clone())));
+                    } else {
+                        parent_value.right_child = Some(Arc::new(RwLock::new(new_x_fast_value.clone())));
+                    }
+                }
+            }
+        }
+
+        // step 4: update linked list pointers
+        let predecessor = self.predecessor(key);
+        let successor = self.successor(key);
+        
+        // update predecessor's right pointer
+        if let Some(pred) = &predecessor {
+            if let Ok(mut pred_guard) = pred.write() {
+                pred_guard.right = Some(Arc::downgrade(&representative));
+            }
+        }
+        
+        // update successor's left pointer  
+        if let Some(succ) = &successor {
+            if let Ok(mut succ_guard) = succ.write() {
+                succ_guard.left = Some(Arc::downgrade(&representative));
+            }
+        }
+        
+        // set representative's pointers
+        if let Ok(mut rep_guard) = representative.write() {
+            rep_guard.left = predecessor.as_ref().map(|p| Arc::downgrade(p));
+            rep_guard.right = successor.map(|s| Arc::downgrade(&s));
+            rep_guard.bucket = Some(Arc::new(RwLock::new(BSTGroup::default())));
+        }
+
+        // step 5: update head and tail representatives
+        let should_update_head = if let Some(head_rep) = &self.head_rep {
+            if let Ok(head) = head_rep.read() {
+                head.key > key
+            } else {
+                false
+            }
+        } else {
+            // first key being inserted
+            true 
+        };
+        
+        if should_update_head {
+            self.head_rep = Some(representative.clone());
+        }
+        
+        let should_update_tail = if let Some(tail_rep) = &self.tail_rep {
+            if let Ok(tail) = tail_rep.read() {
+                tail.key < key
+            } else {
+                false
+            }
+        } else {
+            // first key being inserted
+            true 
+        };
+        
+        if should_update_tail {
+            self.tail_rep = Some(representative.clone());
+        }
+    }
 }
