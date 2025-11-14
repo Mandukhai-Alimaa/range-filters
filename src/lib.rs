@@ -1,3 +1,3 @@
-mod x_fast_trie;
+pub mod x_fast_trie;
 
 pub use x_fast_trie::*;

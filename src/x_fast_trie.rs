@@ -55,7 +55,7 @@ impl XFastTrie {
     //     self.reps.contains_key(&key)
     // }
 
-    fn predecessor(&self, key: Key) -> Option<Arc<RwLock<RepNode>>> {
+    pub fn predecessor(&self, key: Key) -> Option<Arc<RwLock<RepNode>>> {
         let mut low = 0;
         let mut high = self.no_levels;
 
@@ -97,7 +97,7 @@ impl XFastTrie {
         None
     }
 
-    fn successor(&self, key: Key) -> Option<Arc<RwLock<RepNode>>> {
+    pub fn successor(&self, key: Key) -> Option<Arc<RwLock<RepNode>>> {
         let mut low = 0;
         let mut high = self.no_levels;
 
@@ -141,7 +141,7 @@ impl XFastTrie {
 
 
     // insert a key into the x-fast trie
-    fn insert(&mut self, key: Key) {
+    pub fn insert(&mut self, key: Key) {
 
         // step 1: find the longest prefix
         let mut low = 0;
@@ -246,6 +246,82 @@ impl XFastTrie {
         
         if should_update_tail {
             self.tail_rep = Some(representative.clone());
+        }
+    }
+
+    pub fn pretty_print(&self) {
+        println!("\n=== X-Fast Trie Structure ===");
+        
+        println!("\nRepresentatives (Linked List):");
+        if let Some(head) = &self.head_rep {
+            self.print_linked_list(head.clone());
+        } else {
+            println!("  Empty");
+        }
+        
+        println!("\nTrie Levels:");
+        for (level, x_fast_level) in self.levels.iter().enumerate() {
+            if !x_fast_level.table.is_empty() {
+                println!("  Level {} (prefix length {}):", level, level);
+                let mut entries: Vec<_> = x_fast_level.table.iter().collect();
+                entries.sort_by_key(|entry| *entry.key());
+                
+                for entry in entries {
+                    let prefix = entry.key();
+                    let value = entry.value();
+                    let prefix_str = if level == 0 {
+                        "ε".to_string()
+                    } else {
+                        format!("{:0width$b}", prefix, width = level)
+                    };
+                    
+                    print!("    {}: ", prefix_str);
+                    
+                    if let Some(rep) = &value.representative {
+                        if let Ok(rep_guard) = rep.read() {
+                            print!("rep→{} ", rep_guard.key);
+                        }
+                    }
+                    
+                    if value.left_child.is_some() {
+                        print!("L ");
+                    }
+                    if value.right_child.is_some() {
+                        print!("R ");
+                    }
+                    
+                    println!();
+                }
+            }
+        }
+        
+        println!("\n=== End Structure ===\n");
+    }
+    
+    fn print_linked_list(&self, start: Arc<RwLock<RepNode>>) {
+        if let Ok(node) = start.read() {
+            print!("  {} ", node.key);
+            
+            if let Some(right_weak) = &node.right {
+                if let Some(right_arc) = right_weak.upgrade() {
+                    print!("→ ");
+                    self.print_linked_list_helper(right_arc);
+                }
+            }
+            println!();
+        }
+    }
+    
+    fn print_linked_list_helper(&self, node: Arc<RwLock<RepNode>>) {
+        if let Ok(node_guard) = node.read() {
+            print!("{} ", node_guard.key);
+            
+            if let Some(right_weak) = &node_guard.right {
+                if let Some(right_arc) = right_weak.upgrade() {
+                    print!("→ ");
+                    self.print_linked_list_helper(right_arc);
+                }
+            }
         }
     }
 }
