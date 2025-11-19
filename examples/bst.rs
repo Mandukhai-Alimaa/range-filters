@@ -1,10 +1,10 @@
-use range_filters::binary_search_tree::BinarySearchTree;
+use range_filters::binary_search_tree::BinarySearchTreeGroup;
 
 fn main() {
-    let bst = BinarySearchTree::new_with_keys(&[1, 2, 3, 20, 30, 4, 5, 6, 7]);
+    let bst = BinarySearchTreeGroup::new_with_keys(&[1, 2, 3, 20, 30, 4, 5, 6, 7]);
     bst.pretty_print();
 
-    let mut bst2 = BinarySearchTree::new();
+    let mut bst2 = BinarySearchTreeGroup::new();
     bst2.pretty_print();
     for &key in &[50, 25, 75, 12, 37, 62, 87] {
         bst2.insert(key);
@@ -12,7 +12,7 @@ fn main() {
     bst2.pretty_print();
 
     // unbalanced tree
-    let mut bst3 = BinarySearchTree::new();
+    let mut bst3 = BinarySearchTreeGroup::new();
     for &key in &[1, 2, 3, 4, 5] {
         bst3.insert(key);
     }

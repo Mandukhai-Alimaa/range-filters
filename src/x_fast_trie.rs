@@ -1,12 +1,9 @@
 use std::sync::{Arc, RwLock, Weak};
 use dashmap::DashMap;
 use crate::Key;
+use crate::binary_search_tree::BinarySearchTreeGroup;
 
 pub const ROOT_KEY: Key = 67;
-
-// placeholder
-#[derive(Debug, Default)]
-pub struct BSTGroup;
 
 #[derive(Debug)]
 pub struct XFastTrie {
@@ -41,7 +38,7 @@ pub struct RepNode {
     pub key: Key,
     pub left: Option<Weak<RwLock<RepNode>>>,
     pub right: Option<Weak<RwLock<RepNode>>>,
-    pub bucket: Option<Arc<RwLock<BSTGroup>>>,
+    pub bst_group: Option<Arc<RwLock<BinarySearchTreeGroup>>>,
 }
 
 impl XFastTrie {
@@ -65,9 +62,6 @@ impl XFastTrie {
         }
     }
 
-    // fn contains(&self, key: Key) -> bool {
-    //     self.reps.contains_key(&key)
-    // }
     // find length of longest prefix of key
     fn find_longest_prefix_length(&self, key: Key) -> usize {
 
@@ -201,7 +195,7 @@ impl XFastTrie {
             key,
             left: None,
             right: None,
-            bucket: None,
+            bst_group: None,
         }));
 
         // step 3: create child prefixes from longest_prefix_length+1 to no_levels
@@ -286,7 +280,7 @@ impl XFastTrie {
         if let Ok(mut rep_guard) = representative.write() {
             rep_guard.left = predecessor.as_ref().map(|p| Arc::downgrade(p));
             rep_guard.right = successor.map(|s| Arc::downgrade(&s));
-            rep_guard.bucket = Some(Arc::new(RwLock::new(BSTGroup::default())));
+            rep_guard.bst_group = Some(Arc::new(RwLock::new(BinarySearchTreeGroup::default())));
         }
 
         // step 6: update head and tail representatives
