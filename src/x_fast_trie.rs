@@ -32,7 +32,9 @@ pub struct XFastValue {
     pub left_child: Option<Arc<RwLock<XFastValue>>>,
     pub right_child: Option<Arc<RwLock<XFastValue>>>,
 
-    pub representative: Option<Arc<RwLock<RepNode>>>
+    // pub representative: Option<Arc<RwLock<RepNode>>>
+    pub min_rep: Option<Arc<RwLock<RepNode>>>,
+    pub max_rep: Option<Arc<RwLock<RepNode>>>
 }
 
 #[derive(Debug, Default, Clone)]
@@ -107,7 +109,14 @@ impl XFastTrie {
 
         let x_fast_value = self.levels[longest_prefix_length as usize].table.get(&prefix)?;
 
-        if let Some(representative) = &x_fast_value.representative {
+        if let Some(representative) = &x_fast_value.max_rep {
+            if let Ok(rep) = representative.read() {
+                if rep.key <= key {
+                    return Some(representative.clone());
+                }
+            }
+        }
+        if let Some(representative) = &x_fast_value.min_rep {
             if let Ok(rep) = representative.read() {
                 if rep.key <= key {
                     return Some(representative.clone());
@@ -138,7 +147,15 @@ impl XFastTrie {
 
         let x_fast_value = self.levels[longest_prefix_length as usize].table.get(&prefix)?;
 
-        if let Some(representative) = &x_fast_value.representative {
+        if let Some(representative) = &x_fast_value.min_rep {
+            if let Ok(rep) = representative.read() {
+                if rep.key >= key {
+                    return Some(representative.clone());
+                }
+            }
+        }
+
+        if let Some(representative) = &x_fast_value.max_rep {
             if let Ok(rep) = representative.read() {
                 if rep.key >= key {
                     return Some(representative.clone());
@@ -182,7 +199,8 @@ impl XFastTrie {
             let new_x_fast_value = XFastValue {
                 left_child: None,
                 right_child: None,
-                representative: Some(representative.clone()),
+                min_rep: Some(representative.clone()),
+                max_rep: Some(representative.clone()),
             };
             self.levels[prefix_length as usize].table.insert(prefix, new_x_fast_value.clone());
 
@@ -211,7 +229,34 @@ impl XFastTrie {
             }
         }
 
-        // step 4: update linked list pointers
+        // step 4: update all prefixes' parents' min and max representatives
+        if longest_prefix_length > 0 {
+            for prefix_length in (1..=longest_prefix_length - 1).rev() {
+                let prefix = key >> (self.no_levels - prefix_length);
+                let mut x_fast_value = self.levels[prefix_length as usize].table.get_mut(&prefix).unwrap();
+
+                let rep_key = representative.read().unwrap().key;
+
+                let should_update_min = x_fast_value.min_rep.as_ref()
+                    .and_then(|m| m.read().ok())
+                    .map(|m| rep_key < m.key)
+                    .unwrap_or(false);
+                    
+                let should_update_max = x_fast_value.max_rep.as_ref()
+                    .and_then(|m| m.read().ok())
+                    .map(|m| rep_key > m.key)
+                    .unwrap_or(false);
+                
+                if should_update_min {
+                    x_fast_value.min_rep = Some(representative.clone());
+                }
+                if should_update_max {
+                    x_fast_value.max_rep = Some(representative.clone());
+                }
+            }
+        }
+
+        // step 5: update linked list pointers
         // update predecessor's right pointer
         if let Some(pred) = &predecessor {
             if let Ok(mut pred_guard) = pred.write() {
@@ -233,7 +278,7 @@ impl XFastTrie {
             rep_guard.bucket = Some(Arc::new(RwLock::new(BSTGroup::default())));
         }
 
-        // step 5: update head and tail representatives
+        // step 6: update head and tail representatives
         let should_update_head = if let Some(head_rep) = &self.head_rep {
             if let Ok(head) = head_rep.read() {
                 head.key > key
@@ -293,12 +338,16 @@ impl XFastTrie {
                     
                     print!("    {}: ", prefix_str);
                     
-                    if let Some(rep) = &value.representative {
-                        if let Ok(rep_guard) = rep.read() {
-                            print!("rep→{} ", rep_guard.key);
+                    if let Some(min_rep) = &value.min_rep {
+                        if let Ok(rep_guard) = min_rep.read() {
+                            print!("min_rep→{} ", rep_guard.key);
                         }
                     }
-                    
+                    if let Some(max_rep) = &value.max_rep {
+                        if let Ok(rep_guard) = max_rep.read() {
+                            print!("max_rep→{} ", rep_guard.key);
+                        }
+                    }
                     if value.left_child.is_some() {
                         print!("L ");
                     }
