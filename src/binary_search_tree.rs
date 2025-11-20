@@ -147,7 +147,7 @@ impl BinarySearchTreeGroup {
             None => best,
             Some(n) => {
                 if n.key == key {
-                    Self::max_key(&n.left).or(best)
+                    Some(n.key)
                 } else if key < n.key {
                     Self::predecessor_recursive(&n.left, key, best)
                 } else {
@@ -166,7 +166,7 @@ impl BinarySearchTreeGroup {
             None => best,
             Some(n) => {
                 if n.key == key {
-                    Self::min_key(&n.right).or(best)
+                    Some(n.key)
                 } else if key < n.key {
                     Self::successor_recursive(&n.left, key, Some(n.key))
                 } else {

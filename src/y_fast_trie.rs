@@ -99,18 +99,37 @@ impl YFastTrie {
         None
     }
     pub fn successor(&self, key: Key) -> Option<Key> {
-        // find the boundary representative
-        let rep_node = self.x_fast_trie.successor(key)?;
-        let rep = rep_node.read().ok()?;
+        // find the containing bucket via predecessor boundary
+        if let Some(rep_node) = self.x_fast_trie.predecessor(key) {
+            if let Ok(rep) = rep_node.read() {
+                // search within the BST group
+                if let Some(bst_group) = &rep.bst_group {
+                    if let Ok(bst) = bst_group.read() {
+                        if let Some(result) = bst.successor(key) {
+                            return Some(result);
+                        }
+                    }
+                }
 
-        // search within the BST group
-        if let Some(bst_group) = &rep.bst_group {
-            if let Ok(bst) = bst_group.read() {
-                return bst.successor(key);
+                // key is > all keys in this bucket, try next bucket
+                if let Some(next_weak) = &rep.right {
+                    if let Some(next_rep) = next_weak.upgrade() {
+                        if let Ok(next) = next_rep.read() {
+                            return Some(next.key);
+                        }
+                    }
+                }
+            }
+        } else {
+            // key < first boundary, return first key
+            if let Some(head) = &self.x_fast_trie.head_rep {
+                if let Ok(head_guard) = head.read() {
+                    return Some(head_guard.key);
+                }
             }
         }
 
-        Some(rep.key)
+        None
     }
 
     pub fn contains(&self, key: Key) -> bool {
@@ -166,7 +185,7 @@ mod tests {
 
         // verify all keys exist
         for &key in &keys {
-            assert!(trie.contains(key));
+            assert!(trie.contains(key), "key {} should exist", key);
         }
 
         // verify non-existent keys
