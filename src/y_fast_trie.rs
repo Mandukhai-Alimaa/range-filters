@@ -134,3 +134,141 @@ impl YFastTrie {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_single_key() {
+        let trie = YFastTrie::new_with_keys(&[42], 8);
+        assert!(trie.contains(42));
+    }
+
+    #[test]
+    fn test_basic_contains() {
+        let keys = vec![10, 20, 30, 40, 50, 60, 70, 80];
+        let trie = YFastTrie::new_with_keys(&keys, 8);
+
+        for &key in &keys {
+            assert!(trie.contains(key), "key {} should be in trie", key);
+        }
+
+        assert!(!trie.contains(5));
+        assert!(!trie.contains(15));
+        assert!(!trie.contains(85));
+    }
+
+    #[test]
+    fn test_large_set() {
+        // create 100 keys: 0, 10, 20, ..., 990
+        let keys: Vec<Key> = (0..100).map(|i| i * 10).collect();
+        let trie = YFastTrie::new_with_keys(&keys, 8);
+
+        // verify all keys exist
+        for &key in &keys {
+            assert!(trie.contains(key));
+        }
+
+        // verify non-existent keys
+        assert!(!trie.contains(5));
+        assert!(!trie.contains(15));
+        assert!(!trie.contains(995));
+    }
+
+    #[test]
+    fn test_boundary_keys() {
+        // with bst_group_size=8, these keys create 5 groups with boundaries: 0, 8, 16, 24, 32
+        let keys: Vec<Key> = (0..40).collect();
+        let trie = YFastTrie::new_with_keys(&keys, 8);
+
+        // verify boundary keys are in x-fast
+        assert!(trie.x_fast_trie.lookup(0).is_some());
+        assert!(trie.x_fast_trie.lookup(8).is_some());
+        assert!(trie.x_fast_trie.lookup(16).is_some());
+        assert!(trie.x_fast_trie.lookup(24).is_some());
+        assert!(trie.x_fast_trie.lookup(32).is_some());
+
+        // verify non-boundary keys are NOT in x-fast
+        assert!(trie.x_fast_trie.lookup(1).is_none());
+        assert!(trie.x_fast_trie.lookup(9).is_none());
+        assert!(trie.x_fast_trie.lookup(17).is_none());
+
+        // but all keys should be in the trie overall
+        for key in 0..40 {
+            assert!(trie.contains(key), "key {} should be in trie", key);
+        }
+    }
+
+    #[test]
+    fn test_predecessor() {
+        let keys = vec![10, 20, 30, 40, 50];
+        let trie = YFastTrie::new_with_keys(&keys, 8);
+
+        // exact matches
+        assert_eq!(trie.predecessor(10), Some(10));
+        assert_eq!(trie.predecessor(30), Some(30));
+        assert_eq!(trie.predecessor(50), Some(50));
+
+        // between keys
+        assert_eq!(trie.predecessor(15), Some(10));
+        assert_eq!(trie.predecessor(25), Some(20));
+        assert_eq!(trie.predecessor(35), Some(30));
+        assert_eq!(trie.predecessor(45), Some(40));
+
+        // before first key
+        assert_eq!(trie.predecessor(5), None);
+
+        // after last key
+        assert_eq!(trie.predecessor(60), Some(50));
+    }
+
+    #[test]
+    fn test_successor() {
+        let keys = vec![10, 20, 30, 40, 50];
+        let trie = YFastTrie::new_with_keys(&keys, 8);
+
+        // exact matches
+        assert_eq!(trie.successor(10), Some(10));
+        assert_eq!(trie.successor(30), Some(30));
+        assert_eq!(trie.successor(50), Some(50));
+
+        // between keys
+        assert_eq!(trie.successor(15), Some(20));
+        assert_eq!(trie.successor(25), Some(30));
+        assert_eq!(trie.successor(35), Some(40));
+        assert_eq!(trie.successor(45), Some(50));
+
+        // before first key
+        assert_eq!(trie.successor(5), Some(10));
+
+        // after last key
+        assert_eq!(trie.successor(60), None);
+    }
+
+    #[test]
+    fn test_predecessor_successor_across_boundaries() {
+        // 40 keys create boundaries at: 0, 8, 16, 24, 32
+        let keys: Vec<Key> = (0..40).collect();
+        let trie = YFastTrie::new_with_keys(&keys, 8);
+
+        // test across BST group boundaries
+        assert_eq!(trie.predecessor(7), Some(7));
+        assert_eq!(trie.predecessor(8), Some(8));
+        assert_eq!(trie.predecessor(9), Some(9));
+
+        assert_eq!(trie.successor(7), Some(7));
+        assert_eq!(trie.successor(8), Some(8));
+        assert_eq!(trie.successor(9), Some(9));
+
+        // between groups
+        assert_eq!(trie.predecessor(15), Some(15));
+        assert_eq!(trie.successor(15), Some(15));
+
+        assert_eq!(trie.predecessor(16), Some(16));
+        assert_eq!(trie.successor(16), Some(16));
+
+        assert_eq!(trie.predecessor(17), Some(17));
+        assert_eq!(trie.successor(17), Some(17));
+    }
+}
+
