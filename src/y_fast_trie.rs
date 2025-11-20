@@ -26,7 +26,7 @@ impl YFastTrie {
         sorted_keys.dedup();
 
         
-        let bst_group_size = no_levels.max(8);
+        let bst_group_size = no_levels;
 
         let mut x_fast_trie = XFastTrie::new(no_levels);
 
@@ -86,18 +86,36 @@ impl YFastTrie {
     }
 
     pub fn successor_infix_store(&self, key: Key) -> Option<Arc<RwLock<InfixStore>>> {
-        // find boundary via x-fast trie
-        let rep_node = self.x_fast_trie.successor(key)?;
-        let rep = rep_node.read().ok()?;
+        // find the containing bucket via predecessor boundary
+        if let Some(rep_node) = self.x_fast_trie.predecessor(key) {
+            if let Ok(rep) = rep_node.read() {
+                // search within the BST group
+                if let Some(bst_group) = &rep.bst_group {
+                    if let Ok(bst) = bst_group.read() {
+                        if let Some(result) = bst.successor_infix_store(key) {
+                            return Some(result);
+                        }
+                    }
+                }
   
-        // get the BST group and call its successor_infix_store
-        if let Some(bst_group) = &rep.bst_group {
-            if let Ok(bst) = bst_group.read() {
-                return bst.successor_infix_store(key);
+                // key is > all keys in this bucket, try next bucket
+                if let Some(next_weak) = &rep.right {
+                    if let Some(next_rep) = next_weak.upgrade() {
+                        if let Ok(next) = next_rep.read() {
+                            if let Some(bst_group) = &next.bst_group {
+                                if let Ok(bst) = bst_group.read() {
+                                    return bst.get_infix_store(next.key);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
+  
         None
     }
+
     pub fn successor(&self, key: Key) -> Option<Key> {
         // find the containing bucket via predecessor boundary
         if let Some(rep_node) = self.x_fast_trie.predecessor(key) {
@@ -181,7 +199,7 @@ mod tests {
     fn test_large_set() {
         // create 100 keys: 0, 10, 20, ..., 990
         let keys: Vec<Key> = (0..100).map(|i| i * 10).collect();
-        let trie = YFastTrie::new_with_keys(&keys, 8);
+        let trie = YFastTrie::new_with_keys(&keys, 16);
 
         // verify all keys exist
         for &key in &keys {
@@ -288,6 +306,92 @@ mod tests {
 
         assert_eq!(trie.predecessor(17), Some(17));
         assert_eq!(trie.successor(17), Some(17));
+    }
+
+    #[test]
+    fn test_infix_stores() {
+        use crate::binary_search_tree::InfixStore;
+
+        // 24 keys: boundaries at 0, 24, 48
+        let keys: Vec<Key> = (0..24).map(|i| i * 3).collect();
+        let trie = YFastTrie::new_with_keys(&keys, 8);
+
+        // attach infix stores to some keys across buckets
+        let store_6 = InfixStore::default();
+        let store_12 = InfixStore::default();
+        let store_30 = InfixStore::default();
+
+        // manually set infix stores in BST groups
+        if let Some(rep) = trie.x_fast_trie.lookup(0) {
+            if let Ok(r) = rep.read() {
+                if let Some(bst_group) = &r.bst_group {
+                    if let Ok(mut bst) = bst_group.write() {
+                        bst.set_infix_store(6, store_6);
+                    }
+                }
+            }
+        }
+
+        if let Some(rep) = trie.x_fast_trie.lookup(0) {
+            if let Ok(r) = rep.read() {
+                if let Some(bst_group) = &r.bst_group {
+                    if let Ok(mut bst) = bst_group.write() {
+                        bst.set_infix_store(12, store_12);
+                    }
+                }
+            }
+        }
+
+        if let Some(rep) = trie.x_fast_trie.lookup(24) {
+            if let Ok(r) = rep.read() {
+                if let Some(bst_group) = &r.bst_group {
+                    if let Ok(mut bst) = bst_group.write() {
+                        bst.set_infix_store(30, store_30);
+                    }
+                }
+            }
+        }
+
+        // get reference stores for comparison
+        let ref_store_6 = {
+            let rep = trie.x_fast_trie.lookup(0).unwrap();
+            let r = rep.read().unwrap();
+            let bst_group = r.bst_group.as_ref().unwrap();
+            let bst = bst_group.read().unwrap();
+            bst.get_infix_store(6).unwrap()
+        };
+
+        let ref_store_12 = {
+            let rep = trie.x_fast_trie.lookup(0).unwrap();
+            let r = rep.read().unwrap();
+            let bst_group = r.bst_group.as_ref().unwrap();
+            let bst = bst_group.read().unwrap();
+            bst.get_infix_store(12).unwrap()
+        };
+
+        let ref_store_30 = {
+            let rep = trie.x_fast_trie.lookup(24).unwrap();
+            let r = rep.read().unwrap();
+            let bst_group = r.bst_group.as_ref().unwrap();
+            let bst = bst_group.read().unwrap();
+            println!("bst: {:?}", bst);
+            bst.get_infix_store(30).unwrap()
+        };
+
+
+        assert!(Arc::ptr_eq(&trie.predecessor_infix_store(8).unwrap(), &ref_store_6));
+        assert!(Arc::ptr_eq(&trie.predecessor_infix_store(12).unwrap(), &ref_store_12));
+        assert!(Arc::ptr_eq(&trie.predecessor_infix_store(31).unwrap(), &ref_store_30));
+        // assert!(Arc::ptr_eq(&trie.predecessor_infix_store(100).unwrap(), &ref_store_30));
+        
+        assert!(Arc::ptr_eq(&trie.successor_infix_store(5).unwrap(), &ref_store_6));
+        assert!(Arc::ptr_eq(&trie.successor_infix_store(10).unwrap(), &ref_store_12));
+        assert!(Arc::ptr_eq(&trie.successor_infix_store(29).unwrap(), &ref_store_30));
+
+        // extreme ends
+        assert!(trie.predecessor_infix_store(2).is_none()); 
+        assert!(trie.successor_infix_store(1000).is_none());
+
     }
 }
 
