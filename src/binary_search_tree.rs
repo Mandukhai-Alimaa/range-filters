@@ -138,20 +138,43 @@ impl BinarySearchTreeGroup {
         Self::predecessor_store_recursive(&self.root, key, None)
     }
 
-    // fn predecessor_store_recursive(node: &Option<Box<TreeNode>>, key: Key, best: Option<Arc<RwLock<InfixStore>>>) -> Option<Arc<RwLock<InfixStore>>> {
-    //     match node {
-    //         None => best,
-    //         Some(n) => {
-    //             if n.key == key {
-    //                 Self::max_key(&n.left).or(best)
-    //             } else if key < n.key {
-    //                 Self::predecessor_recursive(&n.left, key, best)
-    //             } else {
-    //                 Self::predecessor_recursive(&n.right, key, Some(n.key))
-    //             }
-    //         }
-    //     }
-    // }
+    pub fn predecessor(&self, key: Key) -> Option<Key> {
+        Self::predecessor_recursive(&self.root, key, None)
+    }
+
+    fn predecessor_recursive(node: &Option<Box<TreeNode>>, key: Key, best: Option<Key>) -> Option<Key> {
+        match node {
+            None => best,
+            Some(n) => {
+                if n.key == key {
+                    Self::max_key(&n.left).or(best)
+                } else if key < n.key {
+                    Self::predecessor_recursive(&n.left, key, best)
+                } else {
+                    Self::predecessor_recursive(&n.right, key, Some(n.key))
+                }
+            }
+        }
+    }
+
+    pub fn successor(&self, key: Key) -> Option<Key> {
+        Self::successor_recursive(&self.root, key, None)
+    }
+
+    fn successor_recursive(node: &Option<Box<TreeNode>>, key: Key, best: Option<Key>) -> Option<Key> {
+        match node {
+            None => best,
+            Some(n) => {
+                if n.key == key {
+                    Self::min_key(&n.right).or(best)
+                } else if key < n.key {
+                    Self::successor_recursive(&n.left, key, Some(n.key))
+                } else {
+                    Self::successor_recursive(&n.right, key, best)
+                }
+            }
+        }
+    }
 
     fn predecessor_store_recursive(node: &Option<Box<TreeNode>>, key: Key, best: Option<Arc<RwLock<InfixStore>>>) -> Option<Arc<RwLock<InfixStore>>> {
         match node {
