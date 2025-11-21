@@ -254,4 +254,146 @@ impl InfixStore {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+    #[test]
+    fn test_split_infix() {
+        // infix = 0b1010101010101010 (16 bits)
+        // remainder_size = 8
+        let infix = 0b1010101010101010u64;
+        let (quotient, remainder) = InfixStore::split_infix(infix, 8);
+
+        assert_eq!(quotient, 0b10101010); // top 8 bits
+        assert_eq!(remainder, 0b10101010); // bottom 8 bits
+
+        // test with different sizes
+        let infix = 0b11110000_11001100u64;
+        let (quotient, remainder) = InfixStore::split_infix(infix, 8);
+        assert_eq!(quotient, 0b11110000);
+        assert_eq!(remainder, 0b11001100);
+    }
+
+    #[test]
+    fn test_construction_simple() {
+        // infixes with 10 bits quotient and 8 bits remainder
+        // quotient|remainder format
+        let infixes = vec![
+            (129u64 << 8) | 170,
+            (129u64 << 8) | 188,
+            (129u64 << 8) | 207,
+            (340u64 << 8) | 51, 
+            (340u64 << 8) | 90, 
+        ];
+
+        let store = InfixStore::new_with_infixes(&infixes, 10, 8);
+
+        assert_eq!(store.elem_count, 5);
+        assert_eq!(store.quotient_size, 10);
+        assert_eq!(store.remainder_size, 8);
+
+        // verify occupieds: quotients 129 and 340 should be set
+        assert!(store.is_occupied(129));
+        assert!(store.is_occupied(340));
+        assert!(!store.is_occupied(0));
+        assert!(!store.is_occupied(200));
+
+        // verify runends: slots 2 and 4 should be marked (end of each run)
+        assert!(!store.is_runend(0));
+        assert!(!store.is_runend(1));
+        assert!(store.is_runend(2));  // end of q=129's run
+        assert!(!store.is_runend(3));
+        assert!(store.is_runend(4));  // end of q=340's run
+
+        // verify remainders in slots
+        assert_eq!(store.read_slot(0), 170);
+        assert_eq!(store.read_slot(1), 188);
+        assert_eq!(store.read_slot(2), 207);
+        assert_eq!(store.read_slot(3), 51);
+        assert_eq!(store.read_slot(4), 90);
+    }
+
+    #[test]
+    fn test_construction_same_quotient() {
+        // all elements have same quotient
+        let infixes = vec![
+            (50u64 << 8) | 10,
+            (50u64 << 8) | 20,
+            (50u64 << 8) | 30,
+            (50u64 << 8) | 40,
+        ];
+
+        let store = InfixStore::new_with_infixes(&infixes, 10, 8);
+
+        assert_eq!(store.elem_count, 4);
+        assert!(store.is_occupied(50));
+        assert!(!store.is_occupied(49));
+        assert!(!store.is_occupied(51));
+
+        // all in same run, only last slot is runend
+        assert!(!store.is_runend(0));
+        assert!(!store.is_runend(1));
+        assert!(!store.is_runend(2));
+        assert!(store.is_runend(3));
+
+        assert_eq!(store.read_slot(0), 10);
+        assert_eq!(store.read_slot(1), 20);
+        assert_eq!(store.read_slot(2), 30);
+        assert_eq!(store.read_slot(3), 40);
+    }
+
+    #[test]
+    fn test_construction_different_quotients() {
+        // each element has different quotient
+        let infixes = vec![
+            (10u64 << 8) | 100,
+            (20u64 << 8) | 101,
+            (30u64 << 8) | 102,
+        ];
+
+        let store = InfixStore::new_with_infixes(&infixes, 10, 8);
+
+        assert_eq!(store.elem_count, 3);
+
+        // all quotients occupied
+        assert!(store.is_occupied(10));
+        assert!(store.is_occupied(20));
+        assert!(store.is_occupied(30));
+
+        // each slot is end of its own run
+        assert!(store.is_runend(0));
+        assert!(store.is_runend(1));
+        assert!(store.is_runend(2));
+
+        assert_eq!(store.read_slot(0), 100);
+        assert_eq!(store.read_slot(1), 101);
+        assert_eq!(store.read_slot(2), 102);
+    }
+
+    #[test]
+    fn test_empty_store() {
+        let infixes: Vec<u64> = vec![];
+        let store = InfixStore::new_with_infixes(&infixes, 10, 8);
+
+        assert_eq!(store.elem_count, 0);
+    }
+
+    #[test]
+    fn test_remainder_size_variations() {
+        // test with different remainder sizes
+        for remainder_size in [4, 6, 8, 10, 12] {
+            let max_remainder = (1u64 << remainder_size) - 1;
+            let infixes = vec![
+                (100u64 << remainder_size) | max_remainder,
+                (100u64 << remainder_size) | (max_remainder - 1),
+            ];
+
+            let store = InfixStore::new_with_infixes(&infixes, 10, remainder_size);
+
+            assert_eq!(store.remainder_size, remainder_size);
+            assert_eq!(store.read_slot(0), max_remainder);
+            assert_eq!(store.read_slot(1), max_remainder - 1);
+        }
+    }
+}
