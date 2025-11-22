@@ -15,6 +15,10 @@ const SCALED_SIZES: [u16; 31] = [
 
 const U64_BITS: usize = 64;
 
+/// Memory layout of data:
+/// [popcounts: 64 bits] [occupieds: TARGET_SIZE bits] 
+/// [runends: num_slots bits] [slots: num_slots * remainder_size bits]
+/// popcounts: 32 bits for occupieds and 32 bits for runends
 #[derive(Debug, Default)]
 pub struct InfixStore {
     elem_count: u16,

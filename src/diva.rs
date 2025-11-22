@@ -4,6 +4,25 @@ use crate::y_fast_trie::YFastTrie;
 
 const BASE_IMPLICIT_SIZE: u32 = 10;
 
+
+/// Diva range filter
+///
+/// # Arguments
+/// * `y_fast_trie` - Y-Fast Trie
+/// * `target_size` - Target size
+/// * `fpr` - False positive rate
+/// * `remainder_size` - Remainder size
+/// 
+/// # Example
+/// ```rust
+/// let keys = vec![1, 2, 3, 4, 5];
+/// let target_size = 1024;
+/// let fpr = 0.01;
+/// let diva = Diva::new_with_keys(&keys, target_size, fpr);
+/// ```
+///
+/// # Returns
+/// * `Diva` - Diva range filter
 pub struct Diva {
     y_fast_trie: YFastTrie,
     target_size: usize,
