@@ -45,10 +45,10 @@ impl XFastTrie {
     pub fn new(no_levels: usize) -> Self {
         let mut levels = Vec::with_capacity(no_levels + 1);
         let root = XFastLevel::default();
-        
+
         // insert the root level
         // use a random key for the root level
-        root.table.insert(ROOT_KEY, XFastValue::default()); 
+        root.table.insert(ROOT_KEY, XFastValue::default());
         levels.push(root);
         for _ in 1..=no_levels {
             let new_level = XFastLevel::default();
@@ -60,6 +60,22 @@ impl XFastTrie {
             tail_rep: None,
             no_levels: no_levels,
         }
+    }
+
+    pub fn len(&self) -> usize {
+        let mut count = 0;
+        if let Some(head) = &self.head_rep {
+            let mut current = Some(head.clone());
+            while let Some(node) = current {
+                count += 1;
+                if let Ok(n) = node.read() {
+                    current = n.right.as_ref().and_then(|w| w.upgrade());
+                } else {
+                    break;
+                }
+            }
+        }
+        count
     }
 
     // find length of longest prefix of key

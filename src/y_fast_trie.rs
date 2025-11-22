@@ -56,6 +56,30 @@ impl YFastTrie {
         Self { x_fast_trie }
     }
 
+    pub fn len(&self) -> usize {
+        let mut total = 0;
+        if let Some(head) = &self.x_fast_trie.head_rep {
+            let mut current = Some(head.clone());
+            while let Some(node) = current {
+                if let Ok(n) = node.read() {
+                    if let Some(bst_group) = &n.bst_group {
+                        if let Ok(bst) = bst_group.read() {
+                            total += bst.len();
+                        }
+                    }
+                    current = n.right.as_ref().and_then(|w| w.upgrade());
+                } else {
+                    break;
+                }
+            }
+        }
+        total
+    }
+
+    pub fn sample_count(&self) -> usize {
+        self.x_fast_trie.len()
+    }
+
     pub fn get_infix_store(&self, key: Key) -> Option<Arc<RwLock<InfixStore>>> {
         // find the boundary representative
         let rep_node = self.x_fast_trie.lookup(key)?;

@@ -5,6 +5,8 @@ use crate::infix_store::InfixStore;
 // #[derive(Debug, Default)]
 // pub struct InfixStore;
 
+
+// TODO: add cached count
 #[derive(Debug, Default)]
 pub struct BinarySearchTreeGroup {
     root: Option<Box<TreeNode>>,
@@ -48,6 +50,18 @@ impl BinarySearchTreeGroup {
             infix_store: None,
         });
         Some(root)
+    }
+
+    // TODO: use cached length
+    pub fn len(&self) -> usize {
+        Self::len_recursive(&self.root)
+    }
+
+    fn len_recursive(node: &Option<Box<TreeNode>>) -> usize {
+        match node {
+            None => 0,
+            Some(n) => 1 + Self::len_recursive(&n.left) + Self::len_recursive(&n.right),
+        }
     }
 
     pub fn insert(&mut self, key: Key) {
