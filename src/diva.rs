@@ -15,6 +15,7 @@ const BASE_IMPLICIT_SIZE: u32 = 10;
 /// 
 /// # Example
 /// ```rust
+/// use range_filters::diva::Diva;
 /// let keys = vec![1, 2, 3, 4, 5];
 /// let target_size = 1024;
 /// let fpr = 0.01;
