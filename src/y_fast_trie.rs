@@ -1,7 +1,7 @@
-use crate::x_fast_trie::XFastTrie;
+use crate::Key;
 use crate::binary_search_tree::BinarySearchTreeGroup;
 use crate::infix_store::InfixStore;
-use crate::Key;
+use crate::x_fast_trie::XFastTrie;
 use std::sync::{Arc, RwLock};
 
 pub struct YFastTrie {
@@ -25,7 +25,6 @@ impl YFastTrie {
         sorted_keys.sort();
         sorted_keys.dedup();
 
-        
         let bst_group_size = no_levels;
 
         let mut x_fast_trie = XFastTrie::new(no_levels);
@@ -109,7 +108,6 @@ impl YFastTrie {
         }
     }
 
-
     // TODO: add insert method
     // TODO: add next, previous methods
     // TODO: create an iterator for the trie
@@ -133,7 +131,7 @@ impl YFastTrie {
         // find boundary via x-fast trie
         let rep_node = self.x_fast_trie.predecessor(key)?;
         let rep = rep_node.read().ok()?;
-  
+
         // get the BST group and call its predecessor_infix_store
         if let Some(bst_group) = &rep.bst_group {
             if let Ok(bst) = bst_group.read() {
@@ -155,7 +153,7 @@ impl YFastTrie {
                         }
                     }
                 }
-  
+
                 // key is > all keys in this bucket, try next bucket
                 if let Some(next_weak) = &rep.right {
                     if let Some(next_rep) = next_weak.upgrade() {
@@ -170,7 +168,7 @@ impl YFastTrie {
                 }
             }
         }
-  
+
         None
     }
 
@@ -436,20 +434,35 @@ mod tests {
             bst.get_infix_store(30).unwrap()
         };
 
-
-        assert!(Arc::ptr_eq(&trie.predecessor_infix_store(8).unwrap(), &ref_store_6));
-        assert!(Arc::ptr_eq(&trie.predecessor_infix_store(12).unwrap(), &ref_store_12));
-        assert!(Arc::ptr_eq(&trie.predecessor_infix_store(31).unwrap(), &ref_store_30));
+        assert!(Arc::ptr_eq(
+            &trie.predecessor_infix_store(8).unwrap(),
+            &ref_store_6
+        ));
+        assert!(Arc::ptr_eq(
+            &trie.predecessor_infix_store(12).unwrap(),
+            &ref_store_12
+        ));
+        assert!(Arc::ptr_eq(
+            &trie.predecessor_infix_store(31).unwrap(),
+            &ref_store_30
+        ));
         // assert!(Arc::ptr_eq(&trie.predecessor_infix_store(100).unwrap(), &ref_store_30));
-        
-        assert!(Arc::ptr_eq(&trie.successor_infix_store(5).unwrap(), &ref_store_6));
-        assert!(Arc::ptr_eq(&trie.successor_infix_store(10).unwrap(), &ref_store_12));
-        assert!(Arc::ptr_eq(&trie.successor_infix_store(29).unwrap(), &ref_store_30));
+
+        assert!(Arc::ptr_eq(
+            &trie.successor_infix_store(5).unwrap(),
+            &ref_store_6
+        ));
+        assert!(Arc::ptr_eq(
+            &trie.successor_infix_store(10).unwrap(),
+            &ref_store_12
+        ));
+        assert!(Arc::ptr_eq(
+            &trie.successor_infix_store(29).unwrap(),
+            &ref_store_30
+        ));
 
         // extreme ends
-        assert!(trie.predecessor_infix_store(2).is_none()); 
+        assert!(trie.predecessor_infix_store(2).is_none());
         assert!(trie.successor_infix_store(1000).is_none());
-
     }
 }
-

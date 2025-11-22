@@ -1,10 +1,9 @@
-use std::sync::{Arc, RwLock};
 use crate::Key;
 use crate::infix_store::InfixStore;
+use std::sync::{Arc, RwLock};
 
 // #[derive(Debug, Default)]
 // pub struct InfixStore;
-
 
 // TODO: add cached count
 #[derive(Debug, Default)]
@@ -17,7 +16,7 @@ struct TreeNode {
     key: Key,
     left: Option<Box<TreeNode>>,
     right: Option<Box<TreeNode>>,
-    infix_store: Option<Arc<RwLock<InfixStore>>>
+    infix_store: Option<Arc<RwLock<InfixStore>>>,
 }
 
 impl BinarySearchTreeGroup {
@@ -69,7 +68,6 @@ impl BinarySearchTreeGroup {
     }
 
     fn insert_recursive(node: &mut Option<Box<TreeNode>>, key: Key) {
-
         match node {
             None => {
                 *node = Some(Box::new(TreeNode {
@@ -114,8 +112,7 @@ impl BinarySearchTreeGroup {
             Some(n) => {
                 if key == n.key {
                     Some(n.as_mut())
-                }
-                else if key < n.key {
+                } else if key < n.key {
                     Self::find_node_mut(&mut n.left, key)
                 } else {
                     Self::find_node_mut(&mut n.right, key)
@@ -134,7 +131,10 @@ impl BinarySearchTreeGroup {
         Self::get_infix_store_recursive(&self.root, key)
     }
 
-    fn get_infix_store_recursive(node: &Option<Box<TreeNode>>, key: Key) -> Option<Arc<RwLock<InfixStore>>> {
+    fn get_infix_store_recursive(
+        node: &Option<Box<TreeNode>>,
+        key: Key,
+    ) -> Option<Arc<RwLock<InfixStore>>> {
         match node {
             None => None,
             Some(n) => {
@@ -157,7 +157,11 @@ impl BinarySearchTreeGroup {
         Self::predecessor_recursive(&self.root, key, None)
     }
 
-    fn predecessor_recursive(node: &Option<Box<TreeNode>>, key: Key, best: Option<Key>) -> Option<Key> {
+    fn predecessor_recursive(
+        node: &Option<Box<TreeNode>>,
+        key: Key,
+        best: Option<Key>,
+    ) -> Option<Key> {
         match node {
             None => best,
             Some(n) => {
@@ -176,7 +180,11 @@ impl BinarySearchTreeGroup {
         Self::successor_recursive(&self.root, key, None)
     }
 
-    fn successor_recursive(node: &Option<Box<TreeNode>>, key: Key, best: Option<Key>) -> Option<Key> {
+    fn successor_recursive(
+        node: &Option<Box<TreeNode>>,
+        key: Key,
+        best: Option<Key>,
+    ) -> Option<Key> {
         match node {
             None => best,
             Some(n) => {
@@ -191,7 +199,11 @@ impl BinarySearchTreeGroup {
         }
     }
 
-    fn predecessor_store_recursive(node: &Option<Box<TreeNode>>, key: Key, best: Option<Arc<RwLock<InfixStore>>>) -> Option<Arc<RwLock<InfixStore>>> {
+    fn predecessor_store_recursive(
+        node: &Option<Box<TreeNode>>,
+        key: Key,
+        best: Option<Arc<RwLock<InfixStore>>>,
+    ) -> Option<Arc<RwLock<InfixStore>>> {
         match node {
             None => best,
             Some(n) => {
@@ -210,7 +222,11 @@ impl BinarySearchTreeGroup {
         Self::successor_store_recursive(&self.root, key, None)
     }
 
-    fn successor_store_recursive(node: &Option<Box<TreeNode>>, key: Key, best: Option<Arc<RwLock<InfixStore>>>) -> Option<Arc<RwLock<InfixStore>>> {
+    fn successor_store_recursive(
+        node: &Option<Box<TreeNode>>,
+        key: Key,
+        best: Option<Arc<RwLock<InfixStore>>>,
+    ) -> Option<Arc<RwLock<InfixStore>>> {
         match node {
             None => best,
             Some(n) => {
@@ -293,7 +309,12 @@ impl BinarySearchTreeGroup {
 
     fn print_tree(node: &Option<Box<TreeNode>>, prefix: &str, is_tail: bool) {
         if let Some(n) = node {
-            println!("{}{} {}", prefix, if is_tail { "└──" } else { "├──" }, n.key);
+            println!(
+                "{}{} {}",
+                prefix,
+                if is_tail { "└──" } else { "├──" },
+                n.key
+            );
 
             let new_prefix = format!("{}{}", prefix, if is_tail { "    " } else { "│   " });
 

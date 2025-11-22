@@ -1,15 +1,14 @@
-use crate::y_fast_trie::YFastTrie;
 use crate::infix_store::InfixStore;
 use crate::utils::longest_common_prefix_length;
+use crate::y_fast_trie::YFastTrie;
 
-
-const BASE_IMPLICIT_SIZE: u32 = 10;  
+const BASE_IMPLICIT_SIZE: u32 = 10;
 
 pub struct Diva {
     y_fast_trie: YFastTrie,
     target_size: usize,
     fpr: f64,
-    remainder_size: u8  
+    remainder_size: u8,
 }
 
 impl Diva {
@@ -20,7 +19,7 @@ impl Diva {
             y_fast_trie: YFastTrie::new(NO_LEVELS),
             target_size,
             fpr,
-            remainder_size
+            remainder_size,
         }
     }
 
@@ -31,7 +30,11 @@ impl Diva {
         sorted_keys.dedup();
 
         // sample every target_size keys
-        let sampled_keys = sorted_keys.iter().step_by(target_size).map(|k| *k).collect::<Vec<_>>();
+        let sampled_keys = sorted_keys
+            .iter()
+            .step_by(target_size)
+            .map(|k| *k)
+            .collect::<Vec<_>>();
 
         // TODO: make this dynamic based on the key length
         const NO_LEVELS: usize = 64;
@@ -77,7 +80,7 @@ impl Diva {
             y_fast_trie,
             target_size,
             fpr,
-            remainder_size
+            remainder_size,
         }
     }
 
@@ -115,7 +118,7 @@ impl Diva {
     fn get_shared_ignore_implicit_size(
         key_1: &u64,
         key_2: &u64,
-        use_redundant_bits: bool
+        use_redundant_bits: bool,
     ) -> (u8, u8, u8) {
         // step 1: find shared prefix length (LCP)
         let shared = longest_common_prefix_length(*key_1, *key_2) as u8;
@@ -220,7 +223,6 @@ impl Diva {
         let remainder_size = (1.0 - fpr.log2()).ceil() as u8;
         remainder_size.max(4).min(16) // clamp between 4 and 16 bits
     }
-
 }
 
 #[cfg(test)]

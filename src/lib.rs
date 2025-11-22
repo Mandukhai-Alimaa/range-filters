@@ -1,16 +1,16 @@
-pub mod x_fast_trie;
 pub mod binary_search_tree;
-pub mod y_fast_trie;
-pub mod utils;
-pub mod infix_store;
 pub mod bitmap;
 pub mod diva;
+pub mod infix_store;
+pub mod utils;
+pub mod x_fast_trie;
+pub mod y_fast_trie;
 
-pub use x_fast_trie::{XFastTrie, XFastLevel, XFastValue, RepNode};
 pub use binary_search_tree::BinarySearchTreeGroup;
-pub use y_fast_trie::YFastTrie;
-pub use infix_store::InfixStore;
-pub use bitmap::{set_bit, get_bit, rank, select};
+pub use bitmap::{get_bit, rank, select, set_bit};
 pub use diva::Diva;
+pub use infix_store::InfixStore;
+pub use x_fast_trie::{RepNode, XFastLevel, XFastTrie, XFastValue};
+pub use y_fast_trie::YFastTrie;
 
 pub type Key = u64;

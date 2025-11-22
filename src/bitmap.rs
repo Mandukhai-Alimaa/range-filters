@@ -32,7 +32,6 @@ pub fn rank(data: &[u64], pos: usize) -> usize {
     }
 
     count
-
 }
 
 // find the position of the rank-th 1 in the data
@@ -55,7 +54,6 @@ pub fn select(data: &[u64], rank: usize) -> Option<usize> {
     }
     None
 }
-
 
 #[inline]
 fn select_in_word(word: u64, rank: usize) -> Option<usize> {
@@ -90,7 +88,12 @@ pub fn rank_cached(data: &[u64], pos: usize, half_pos: usize, cached_popcount: u
 /// optimized select using cached halfway popcount
 /// if target rank is past cached count, start from midpoint
 #[inline]
-pub fn select_cached(data: &[u64], rank_val: usize, half_pos: usize, cached_popcount: usize) -> Option<usize> {
+pub fn select_cached(
+    data: &[u64],
+    rank_val: usize,
+    half_pos: usize,
+    cached_popcount: usize,
+) -> Option<usize> {
     if rank_val < cached_popcount {
         // target is in first half, use regular select
         select(data, rank_val)
@@ -100,8 +103,7 @@ pub fn select_cached(data: &[u64], rank_val: usize, half_pos: usize, cached_popc
         let word_offset = half_pos / U64_BIT_SIZE;
 
         // search in second half
-        select(&data[word_offset..], remaining_rank)
-            .map(|pos| pos + half_pos)
+        select(&data[word_offset..], remaining_rank).map(|pos| pos + half_pos)
     }
 }
 
@@ -143,10 +145,10 @@ mod tests {
         set_bit(&mut data, 65);
         set_bit(&mut data, 127);
 
-        assert_eq!(rank(&data, 0), 0);  // before bit 0
-        assert_eq!(rank(&data, 1), 1);  // after bit 0
-        assert_eq!(rank(&data, 3), 2);  // after bits 0, 2
-        assert_eq!(rank(&data, 5), 3);  // after bits 0, 2, 4
+        assert_eq!(rank(&data, 0), 0); // before bit 0
+        assert_eq!(rank(&data, 1), 1); // after bit 0
+        assert_eq!(rank(&data, 3), 2); // after bits 0, 2
+        assert_eq!(rank(&data, 5), 3); // after bits 0, 2, 4
         assert_eq!(rank(&data, 64), 3); // before second word
         assert_eq!(rank(&data, 65), 4); // after bit 64
         assert_eq!(rank(&data, 128), 6); // all bits
@@ -163,13 +165,13 @@ mod tests {
         set_bit(&mut data, 65);
         set_bit(&mut data, 127);
 
-        assert_eq!(select(&data, 0), Some(0));   // 0th one at position 0
-        assert_eq!(select(&data, 1), Some(2));   // 1st one at position 2
-        assert_eq!(select(&data, 2), Some(4));   // 2nd one at position 4
-        assert_eq!(select(&data, 3), Some(64));  // 3rd one at position 64
-        assert_eq!(select(&data, 4), Some(65));  // 4th one at position 65
+        assert_eq!(select(&data, 0), Some(0)); // 0th one at position 0
+        assert_eq!(select(&data, 1), Some(2)); // 1st one at position 2
+        assert_eq!(select(&data, 2), Some(4)); // 2nd one at position 4
+        assert_eq!(select(&data, 3), Some(64)); // 3rd one at position 64
+        assert_eq!(select(&data, 4), Some(65)); // 4th one at position 65
         assert_eq!(select(&data, 5), Some(127)); // 5th one at position 127
-        assert_eq!(select(&data, 6), None);      // no 6th one
+        assert_eq!(select(&data, 6), None); // no 6th one
     }
 
     #[test]

@@ -1,20 +1,16 @@
-
-use crate::bitmap::{set_bit, get_bit, rank};
+use crate::bitmap::{get_bit, rank, set_bit};
 
 const TARGET_SIZE: u16 = 1024;
 // const LOAD_FACTOR: f64 = 0.95;
 const SIZE_GRADE_COUNT: usize = 31;
-// const DEFAULT_SIZE_GRADE: u8 = 14;  
+// const DEFAULT_SIZE_GRADE: u8 = 14;
 
 // precomputed number of slots for each size grade
 // size grades 0-30
 // grade 14 is neutral - 1024 slots
 const SCALED_SIZES: [u16; 31] = [
-    463, 488, 514, 541, 570, 600, 632, 666, 701, 738,
-    777, 818, 861, 907,
-    1024, 
-    1078, 1135, 1195, 1258, 1325, 1395, 1469, 1547, 1629,
-    1715, 1806, 1901, 2002, 2108, 2219, 2326
+    463, 488, 514, 541, 570, 600, 632, 666, 701, 738, 777, 818, 861, 907, 1024, 1078, 1135, 1195,
+    1258, 1325, 1395, 1469, 1547, 1629, 1715, 1806, 1901, 2002, 2108, 2219, 2326,
 ];
 
 const U64_BITS: usize = 64;
@@ -24,20 +20,16 @@ pub struct InfixStore {
     elem_count: u16,
     size_grade: u8, // decides the number of slots in the infix store
     remainder_size: u8,
-    data: Vec<u64>
+    data: Vec<u64>,
 }
 
 impl InfixStore {
-
     /// Create a new InfixStore from sorted extracted infixes
     ///
     /// # Arguments
     /// * `infixes` - Sorted list of extracted partial keys (quotient|remainder)
     /// * `remainder_size` - Number of bits for remainder part
-    pub fn new_with_infixes(
-        infixes: &[u64],
-        remainder_size: u8,
-    ) -> Self {
+    pub fn new_with_infixes(infixes: &[u64], remainder_size: u8) -> Self {
         // step 1: determine size_grade based on number of elements
         let size_grade = Self::choose_size_grade(infixes.len());
         let num_slots = SCALED_SIZES[size_grade as usize];
@@ -64,12 +56,7 @@ impl InfixStore {
         }
 
         // step 3: load infixes in the infix store
-        Self::load_infixes_to_store(
-            &mut data,
-            infixes,
-            remainder_size,
-            num_slots,
-        );
+        Self::load_infixes_to_store(&mut data, infixes, remainder_size, num_slots);
 
         Self {
             elem_count: infixes.len() as u16,
@@ -89,9 +76,13 @@ impl InfixStore {
         (SIZE_GRADE_COUNT - 1) as u8
     }
 
-
     /// load sorted infixes into the infix store
-    fn load_infixes_to_store( data: &mut [u64], infixes: &[u64], remainder_size: u8, num_slots: u16) {
+    fn load_infixes_to_store(
+        data: &mut [u64],
+        infixes: &[u64],
+        remainder_size: u8,
+        num_slots: u16,
+    ) {
         let occupieds_start = 1;
         let occupieds_words = (TARGET_SIZE as usize + U64_BITS - 1) / U64_BITS;
         let runends_start = occupieds_start + occupieds_words;
@@ -104,11 +95,11 @@ impl InfixStore {
 
         for infix in infixes {
             let (quotient, remainder) = Self::split_infix(*infix, remainder_size);
-            
+
             // set quotient bit in occupieds bitmap
             let occupieds_slice = &mut data[occupieds_start..occupieds_start + occupieds_words];
             set_bit(occupieds_slice, quotient as usize);
-            
+
             let is_last_in_run = prev_quotient.is_some() && prev_quotient.unwrap() != quotient;
 
             if is_last_in_run {
@@ -116,13 +107,13 @@ impl InfixStore {
                 let runends_slice = &mut data[runends_start..runends_start + runends_words];
                 set_bit(runends_slice, slot_pos - 1);
             }
-            
+
             // write remainder to slot
             let slots_slice = &mut data[slots_start..slots_start + slots_words];
             Self::write_slot(slots_slice, slot_pos, remainder, remainder_size);
-            
-            prev_quotient = Some(quotient);        
-            slot_pos += 1;   
+
+            prev_quotient = Some(quotient);
+            slot_pos += 1;
         }
 
         if slot_pos > 0 {
@@ -141,12 +132,7 @@ impl InfixStore {
     }
 
     /// Write a remainder value to a specific slot
-    fn write_slot(
-        slots_slice: &mut [u64],
-        slot_index: usize,
-        remainder: u64,
-        remainder_size: u8,
-    ) {
+    fn write_slot(slots_slice: &mut [u64], slot_index: usize, remainder: u64, remainder_size: u8) {
         let bit_pos = slot_index * remainder_size as usize;
         let word_index = bit_pos / U64_BITS;
         let bit_offset = bit_pos % U64_BITS;
@@ -223,14 +209,16 @@ impl InfixStore {
     pub fn read_slot(&self, slot_index: usize) -> u64 {
         let num_slots = SCALED_SIZES[self.size_grade as usize];
         let (_, _, slots_start) = self.get_offsets();
-        let slots_words = (num_slots as usize * self.remainder_size as usize + U64_BITS - 1) / U64_BITS;
+        let slots_words =
+            (num_slots as usize * self.remainder_size as usize + U64_BITS - 1) / U64_BITS;
         let slots_slice = &self.data[slots_start..slots_start + slots_words];
 
         let bit_pos = slot_index * self.remainder_size as usize;
         let word_index = bit_pos / U64_BITS;
         let bit_offset = bit_pos % U64_BITS;
 
-        let mut result = (slots_slice[word_index] >> bit_offset) & ((1u64 << self.remainder_size) - 1);
+        let mut result =
+            (slots_slice[word_index] >> bit_offset) & ((1u64 << self.remainder_size) - 1);
 
         // handle overflow from next word if needed
         if bit_offset + self.remainder_size as usize > U64_BITS {
@@ -273,8 +261,8 @@ mod tests {
             (129u64 << 8) | 170,
             (129u64 << 8) | 188,
             (129u64 << 8) | 207,
-            (340u64 << 8) | 51, 
-            (340u64 << 8) | 90, 
+            (340u64 << 8) | 51,
+            (340u64 << 8) | 90,
         ];
 
         let store = InfixStore::new_with_infixes(&infixes, 8);
@@ -292,9 +280,9 @@ mod tests {
         // verify runends: slots 2 and 4 should be marked (end of each run)
         assert!(!store.is_runend(0));
         assert!(!store.is_runend(1));
-        assert!(store.is_runend(2));  // end of q=129's run
+        assert!(store.is_runend(2)); // end of q=129's run
         assert!(!store.is_runend(3));
-        assert!(store.is_runend(4));  // end of q=340's run
+        assert!(store.is_runend(4)); // end of q=340's run
 
         // verify remainders in slots
         assert_eq!(store.read_slot(0), 170);
@@ -336,11 +324,7 @@ mod tests {
     #[test]
     fn test_construction_different_quotients() {
         // each element has different quotient
-        let infixes = vec![
-            (10u64 << 8) | 100,
-            (20u64 << 8) | 101,
-            (30u64 << 8) | 102,
-        ];
+        let infixes = vec![(10u64 << 8) | 100, (20u64 << 8) | 101, (30u64 << 8) | 102];
 
         let store = InfixStore::new_with_infixes(&infixes, 8);
 
