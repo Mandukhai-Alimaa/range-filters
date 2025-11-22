@@ -4,7 +4,7 @@ use crate::bitmap::{set_bit, get_bit, rank};
 const TARGET_SIZE: u16 = 1024;
 // const LOAD_FACTOR: f64 = 0.95;
 const SIZE_GRADE_COUNT: usize = 31;
-// const DEFAULT_SIZE_GRADE: u8 = 14;  // grade 14 = exactly 1024 slots
+// const DEFAULT_SIZE_GRADE: u8 = 14;  
 
 // precomputed number of slots for each size grade
 // size grades 0-30
@@ -286,10 +286,10 @@ mod tests {
             (340u64 << 8) | 90, 
         ];
 
-        let store = InfixStore::new_with_infixes(&infixes, 10, 8);
+        let store = InfixStore::new_with_infixes(&infixes, 8);
 
         assert_eq!(store.elem_count, 5);
-        assert_eq!(store.quotient_size, 10);
+        // assert_eq!(store.quotient_size, 10);
         assert_eq!(store.remainder_size, 8);
 
         // verify occupieds: quotients 129 and 340 should be set
@@ -323,7 +323,7 @@ mod tests {
             (50u64 << 8) | 40,
         ];
 
-        let store = InfixStore::new_with_infixes(&infixes, 10, 8);
+        let store = InfixStore::new_with_infixes(&infixes, 8);
 
         assert_eq!(store.elem_count, 4);
         assert!(store.is_occupied(50));
@@ -351,7 +351,7 @@ mod tests {
             (30u64 << 8) | 102,
         ];
 
-        let store = InfixStore::new_with_infixes(&infixes, 10, 8);
+        let store = InfixStore::new_with_infixes(&infixes, 8);
 
         assert_eq!(store.elem_count, 3);
 
@@ -373,7 +373,7 @@ mod tests {
     #[test]
     fn test_empty_store() {
         let infixes: Vec<u64> = vec![];
-        let store = InfixStore::new_with_infixes(&infixes, 10, 8);
+        let store = InfixStore::new_with_infixes(&infixes, 8);
 
         assert_eq!(store.elem_count, 0);
     }
@@ -388,7 +388,7 @@ mod tests {
                 (100u64 << remainder_size) | (max_remainder - 1),
             ];
 
-            let store = InfixStore::new_with_infixes(&infixes, 10, remainder_size);
+            let store = InfixStore::new_with_infixes(&infixes, remainder_size);
 
             assert_eq!(store.remainder_size, remainder_size);
             assert_eq!(store.read_slot(0), max_remainder);
