@@ -23,13 +23,8 @@ const U64_BITS: usize = 64;
 pub struct InfixStore {
     elem_count: u16,
     size_grade: u8, // decides the number of slots in the infix store
-    // quotient_size: u8,
     remainder_size: u8,
-    // lcp_length: u8,
-    // redundant_bits_count: u8,
-    // implicit_bits_count: u8,
-    // occupieds bitmap (T bits + runends bitmap (T-1 bits) + slots array (remainders)
-    data: Vec<u64> 
+    data: Vec<u64>
 }
 
 impl InfixStore {
@@ -38,11 +33,9 @@ impl InfixStore {
     ///
     /// # Arguments
     /// * `infixes` - Sorted list of extracted partial keys (quotient|remainder)
-    /// * `quotient_size` - Number of bits for quotient part
     /// * `remainder_size` - Number of bits for remainder part
     pub fn new_with_infixes(
         infixes: &[u64],
-        // quotient_size: u8,
         remainder_size: u8,
     ) -> Self {
         // step 1: determine size_grade based on number of elements
@@ -65,7 +58,6 @@ impl InfixStore {
             return Self {
                 elem_count: 0,
                 size_grade,
-                // quotient_size,
                 remainder_size,
                 data,
             };
@@ -82,7 +74,6 @@ impl InfixStore {
         Self {
             elem_count: infixes.len() as u16,
             size_grade,
-            // quotient_size,
             remainder_size,
             data,
         }
