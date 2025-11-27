@@ -1,5 +1,6 @@
 pub mod binary_search_tree;
 pub mod bitmap;
+pub mod data_gen;
 pub mod diva;
 pub mod infix_store;
 pub mod utils;
@@ -14,3 +15,4 @@ pub use x_fast_trie::{RepNode, XFastLevel, XFastTrie, XFastValue};
 pub use y_fast_trie::YFastTrie;
 
 pub type Key = u64;
+pub const U64_BITS: usize = 64;
