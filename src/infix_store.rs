@@ -235,6 +235,22 @@ impl InfixStore {
         result
     }
 
+    pub fn elem_count(&self) -> usize {
+        self.elem_count as usize
+    }
+
+    pub fn size_grade(&self) -> u8 {
+        self.size_grade
+    }
+
+    pub fn remainder_size(&self) -> u8 {
+        self.remainder_size
+    }
+
+    pub fn num_slots(&self) -> usize {
+        SCALED_SIZES[self.size_grade as usize] as usize
+    }
+
     pub fn pretty_print(&self) {
         print!("{}", self);
     }

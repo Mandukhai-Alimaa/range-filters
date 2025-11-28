@@ -97,9 +97,8 @@ impl YFastTrie {
 
     pub fn set_infix_store(&mut self, key: Key, infix_store: InfixStore) {
         // find the boundary representative
-        if let Some(rep_node) = self.x_fast_trie.lookup(key) {
+        if let Some(rep_node) = self.x_fast_trie.predecessor(key) {
             if let Ok(rep) = rep_node.read() {
-                // get the BST group and call its set_infix_store
                 if let Some(bst_group) = &rep.bst_group {
                     if let Ok(mut bst) = bst_group.write() {
                         bst.set_infix_store(key, infix_store);
@@ -230,6 +229,24 @@ impl YFastTrie {
     pub fn pretty_print(&self) {
         print!("{}", self);
     }
+
+    // helper to collect all keys from BST in sorted order
+    fn collect_bst_keys(node: &Option<Box<crate::binary_search_tree::TreeNode>>) -> Vec<Key> {
+        let mut keys = Vec::new();
+        Self::collect_bst_keys_recursive(node, &mut keys);
+        keys
+    }
+
+    fn collect_bst_keys_recursive(
+        node: &Option<Box<crate::binary_search_tree::TreeNode>>,
+        keys: &mut Vec<Key>
+    ) {
+        if let Some(n) = node {
+            Self::collect_bst_keys_recursive(&n.left, keys);
+            keys.push(n.key);
+            Self::collect_bst_keys_recursive(&n.right, keys);
+        }
+    }
 }
 
 impl fmt::Display for YFastTrie {
@@ -263,6 +280,26 @@ impl fmt::Display for YFastTrie {
                     if let Some(bst_group) = &n.bst_group {
                         if let Ok(bst) = bst_group.read() {
                             write!(f, "{}", bst)?;
+
+                            // check for InfixStores attached to keys in this BST
+                            let keys = Self::collect_bst_keys(&bst.root);
+                            let mut infix_stats = Vec::new();
+
+                            for &key in &keys {
+                                if let Some(infix_store_arc) = bst.get_infix_store(key) {
+                                    if let Ok(infix_store) = infix_store_arc.read() {
+                                        infix_stats.push((key, infix_store.elem_count(), infix_store.remainder_size(), infix_store.num_slots()));
+                                    }
+                                }
+                            }
+
+                            if !infix_stats.is_empty() {
+                                writeln!(f, "  InfixStores:")?;
+                                for (key, elem_count, remainder_size, num_slots) in infix_stats {
+                                    writeln!(f, "    Key {}: {} elements, {} bit remainder, {} slots",
+                                        key, elem_count, remainder_size, num_slots)?;
+                                }
+                            }
                         }
                     } else {
                         writeln!(f, "  (no BST group attached)")?;

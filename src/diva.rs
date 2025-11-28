@@ -2,6 +2,8 @@ use crate::infix_store::InfixStore;
 use crate::utils::longest_common_prefix_length;
 use crate::y_fast_trie::YFastTrie;
 use crate::U64_BITS;
+use std::fmt;
+use crate::Key;
 
 const BASE_IMPLICIT_SIZE: u32 = 10;
 
@@ -44,18 +46,24 @@ impl Diva {
         }
     }
 
-    pub fn new_with_keys(keys: &[u64], target_size: usize, fpr: f64) -> Self {
+    pub fn new_with_keys(keys: &[Key], target_size: usize, fpr: f64) -> Self {
         let remainder_size = Self::choose_remainder_size(target_size, fpr);
         let mut sorted_keys = keys.to_vec();
         sorted_keys.sort();
         sorted_keys.dedup();
 
-        // sample every target_size keys
-        let sampled_keys = sorted_keys
+        let mut sampled_keys: Vec<Key> = sorted_keys
             .iter()
             .step_by(target_size)
-            .map(|k| *k)
-            .collect::<Vec<_>>();
+            .copied()
+            .collect();
+
+        // ensure last key is sampled if not already
+        if let Some(&last_key) = sorted_keys.last() {
+            if sampled_keys.last() != Some(&last_key) {
+                sampled_keys.push(last_key);
+            }
+        }
 
         // TODO: make this dynamic based on the key length
         const NO_LEVELS: usize = U64_BITS;
@@ -70,14 +78,16 @@ impl Diva {
             let (shared_prefix_len, redundant_bits, quotient_bits) =
                 Self::get_shared_ignore_implicit_size(&predecessor, &successor, false);
 
-            // find intermediate keys between these samples (skip the sample itself)
-            let start_idx = i * target_size + 1;
-            let end_idx = ((i + 1) * target_size).min(sorted_keys.len());
+            // find intermediate keys between these samples excluding the samples themselves
+            let intermediate_keys: Vec<Key> = sorted_keys
+                .iter()
+                .filter(|&&k| k > predecessor && k < successor)
+                .copied()
+                .collect();
 
             // extract infixes from intermediate keys
             let mut infixes = Vec::new();
-            for j in start_idx..end_idx {
-                let key = sorted_keys[j];
+            for key in intermediate_keys {
                 let key_msb = Self::get_msb(&predecessor, &key);
                 let infix = Self::extract_partial_key(
                     key,
@@ -108,7 +118,7 @@ impl Diva {
     /// compute redundant bits after first differing bit
     /// redundant bits are consecutive bits with opposite patterns in pred/succ
     /// that can be reconstructed knowing the key is in this range
-    fn compute_redundant_bits(key_1: u64, key_2: u64, shared_prefix_len: u8) -> u8 {
+    fn compute_redundant_bits(key_1: Key, key_2: Key, shared_prefix_len: u8) -> u8 {
         if shared_prefix_len >= 63 {
             return 0;
         }
@@ -137,8 +147,8 @@ impl Diva {
     /// compute shared prefix, redundant bits, and quotient size
     /// returns: (shared_prefix_len, redundant_bits, quotient_bits)
     fn get_shared_ignore_implicit_size(
-        key_1: &u64,
-        key_2: &u64,
+        key_1: &Key,
+        key_2: &Key,
         use_redundant_bits: bool,
     ) -> (u8, u8, u8) {
         // step 1: find shared prefix length (LCP)
@@ -193,18 +203,18 @@ impl Diva {
     /// * `remainder_bits` - Number of remainder bits to extract (explicit)
     /// * `msb` - The first differing bit (0 or 1)
     fn extract_partial_key(
-        key: u64,
+        key: Key,
         shared_prefix_len: u8,
         redundant_bits: u8,
         quotient_bits: u8,
         remainder_bits: u8,
         msb: u8,
-    ) -> u64 {
+    ) -> Key {
         // position where extraction starts (after shared + first_diff + redundant)
         let start_bit = shared_prefix_len + 1 + redundant_bits;
 
         if start_bit >= 64 {
-            return msb as u64;
+            return msb as Key;
         }
 
         // extract quotient + remainder bits
@@ -212,20 +222,20 @@ impl Diva {
         let bits_to_extract = (quotient_bits + remainder_bits).min(remaining_bits);
 
         if bits_to_extract == 0 {
-            return msb as u64;
+            return msb as Key;
         }
 
         let shift_amount = 64 - start_bit - bits_to_extract;
-        let extracted = (key >> shift_amount) & ((1u64 << bits_to_extract) - 1);
+        let extracted = (key >> shift_amount) & ((1 << bits_to_extract) - 1);
 
         // combine: [MSB: 1 bit][quotient: quotient_bits][remainder: remainder_bits]
-        let result = ((msb as u64) << (quotient_bits + remainder_bits)) | extracted;
+        let result = ((msb as Key) << (quotient_bits + remainder_bits)) | extracted;
 
         result
     }
 
     /// get MSB (first differing bit) between predecessor and successor
-    fn get_msb(key_1: &u64, key_2: &u64) -> u8 {
+    fn get_msb(key_1: &Key, key_2: &Key) -> u8 {
         let shared = longest_common_prefix_length(*key_1, *key_2);
 
         if shared >= 64 {
@@ -243,6 +253,40 @@ impl Diva {
         // remainder_size = log2(2/FPR) = log2(2) + log2(1/FPR) = 1 - log2(FPR)
         let remainder_size = (1.0 - fpr.log2()).ceil() as u8;
         remainder_size.max(4).min(16) // clamp between 4 and 16 bits
+    }
+
+    pub fn pretty_print(&self) {
+        print!("{}", self);
+    }
+}
+
+impl fmt::Display for Diva {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "\n╔════════════════════════════════════════════════════════╗")?;
+        writeln!(f, "║                   DIVA RANGE FILTER                    ║")?;
+        writeln!(f, "╚════════════════════════════════════════════════════════╝")?;
+
+        // configuration
+        writeln!(f, "\nConfiguration:")?;
+        writeln!(f, "  Target size (T):      {}", self.target_size)?;
+        writeln!(f, "  False positive rate:  {:.4}%", self.fpr * 100.0)?;
+        writeln!(f, "  Remainder size:       {} bits", self.remainder_size)?;
+
+        // stats
+        writeln!(f, "\nStatistics:")?;
+        writeln!(f, "  Total keys:           {}", self.y_fast_trie.len())?;
+        writeln!(f, "  Sample count:         {}", self.y_fast_trie.sample_count())?;
+        let avg_bucket_size = if self.y_fast_trie.sample_count() > 0 {
+            self.y_fast_trie.len() as f64 / self.y_fast_trie.sample_count() as f64
+        } else {
+            0.0
+        };
+        writeln!(f, "  Avg keys per bucket:  {:.1}", avg_bucket_size)?;
+
+        // underlying Y-Fast Trie structure
+        write!(f, "{}", self.y_fast_trie)?;
+
+        Ok(())
     }
 }
 
@@ -303,7 +347,8 @@ mod tests {
         let target_size = 1024;
         let diva = Diva::new_with_keys(&keys, target_size, 0.01);
 
-        let expected_samples = (keys.len() + target_size - 1) / target_size;
+        // +1 because we sample the last key too
+        let expected_samples = (keys.len() + target_size - 1) / target_size + 1;
         let actual_samples = diva.y_fast_trie.len();
 
         assert_eq!(actual_samples, expected_samples);
