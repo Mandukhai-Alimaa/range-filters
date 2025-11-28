@@ -1,4 +1,5 @@
 use crate::bitmap::{get_bit, rank, set_bit};
+use crate::U64_BITS;
 
 const TARGET_SIZE: u16 = 1024;
 // const LOAD_FACTOR: f64 = 0.95;
@@ -12,8 +13,6 @@ const SCALED_SIZES: [u16; 31] = [
     463, 488, 514, 541, 570, 600, 632, 666, 701, 738, 777, 818, 861, 907, 1024, 1078, 1135, 1195,
     1258, 1325, 1395, 1469, 1547, 1629, 1715, 1806, 1901, 2002, 2108, 2219, 2326,
 ];
-
-const U64_BITS: usize = 64;
 
 /// Memory layout of data:
 /// [popcounts: 64 bits] [occupieds: TARGET_SIZE bits] 

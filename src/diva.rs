@@ -1,6 +1,7 @@
 use crate::infix_store::InfixStore;
 use crate::utils::longest_common_prefix_length;
 use crate::y_fast_trie::YFastTrie;
+use crate::U64_BITS;
 
 const BASE_IMPLICIT_SIZE: u32 = 10;
 
@@ -57,7 +58,7 @@ impl Diva {
             .collect::<Vec<_>>();
 
         // TODO: make this dynamic based on the key length
-        const NO_LEVELS: usize = 64;
+        const NO_LEVELS: usize = U64_BITS;
         let mut y_fast_trie = YFastTrie::new_with_keys(&sampled_keys, NO_LEVELS);
 
         // for each pair of consecutive samples, extract infixes from intermediate keys
