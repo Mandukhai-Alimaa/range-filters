@@ -41,6 +41,30 @@ pub fn generate_normal_i32(count: usize, mean: f64, std_dev: f64) -> Vec<i32> {
         .collect()
 }
 
+pub fn generate_normal_u16(count: usize, mean: f64, std_dev: f64) -> Vec<u16> {
+    let normal = Normal::new(mean, std_dev).unwrap();
+    let mut rng = thread_rng();
+
+    (0..count)
+        .map(|_| {
+            let sample: f64 = normal.sample(&mut rng);
+            sample.max(0.0).min(u16::MAX as f64) as u16
+        })
+        .collect()
+}
+
+pub fn generate_normal_u8(count: usize, mean: f64, std_dev: f64) -> Vec<u8> {
+    let normal = Normal::new(mean, std_dev).unwrap();
+    let mut rng = thread_rng();
+
+    (0..count)
+        .map(|_| {
+            let sample: f64 = normal.sample(&mut rng);
+            sample.max(0.0).min(u8::MAX as f64) as u8
+        })
+        .collect()
+}
+
 pub fn generate_uniform_u64(count: usize, min: u64, max: u64) -> Vec<u64> {
     let uniform = Uniform::new_inclusive(min, max);
     let mut rng = thread_rng();
@@ -82,6 +106,7 @@ pub fn generate_strings(count: usize, min_len: usize, max_len: usize) -> Vec<Str
         .collect()
 }
 
+// generate smooth u64 keys with normal distribution
 pub fn generate_smooth_u64(count: Option<usize>) -> Vec<u64> {
     let count = count.unwrap_or(DEFAULT_COUNT);
     let mean = (u64::MAX / 2) as f64;
@@ -101,6 +126,20 @@ pub fn generate_smooth_i32(count: Option<usize>) -> Vec<i32> {
     let mean = 0.0;
     let std_dev = (i32::MAX / 3) as f64;
     generate_normal_i32(count, mean, std_dev)
+}
+
+pub fn generate_smooth_u16(count: Option<usize>) -> Vec<u16> {
+    let count = count.unwrap_or(DEFAULT_COUNT);
+    let mean = (u16::MAX / 2) as f64;
+    let std_dev = (u16::MAX / 6) as f64;
+    generate_normal_u16(count, mean, std_dev)
+}
+
+pub fn generate_smooth_u8(count: Option<usize>) -> Vec<u8> {
+    let count = count.unwrap_or(DEFAULT_COUNT);
+    let mean = (u8::MAX / 2) as f64;
+    let std_dev = (u8::MAX / 6) as f64;
+    generate_normal_u8(count, mean, std_dev)
 }
 
 #[cfg(test)]
