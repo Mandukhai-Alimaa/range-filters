@@ -110,7 +110,16 @@ impl XFastTrie {
 
         let longest_prefix_length = self.find_longest_prefix_length(key);
 
-        // println!("longest_prefix_length: {}", longest_prefix_length);
+        if longest_prefix_length == 0 && key >> (self.no_levels - 1) == 1 {
+            // find the max representative of the root level
+            if let Some(root_value) = self.levels[1].table.get(&0) {
+                return Some(root_value.max_rep.clone()?);
+            }
+        }
+        else if longest_prefix_length == 0 && key >> (self.no_levels - 1) == 0 {
+            return None;
+        }
+
         let prefix = key >> (self.no_levels - longest_prefix_length);
 
         let x_fast_value = self.levels[longest_prefix_length as usize]
@@ -149,6 +158,16 @@ impl XFastTrie {
         }
 
         let longest_prefix_length = self.find_longest_prefix_length(key);
+
+        if longest_prefix_length == 0 && key >> (self.no_levels - 1) == 1 {
+            return None;
+        }
+        else if longest_prefix_length == 0 && key >> (self.no_levels - 1) == 0 {
+            // find the min representative of the root level
+            if let Some(root_value) = self.levels[1].table.get(&1) {
+                return Some(root_value.min_rep.clone()?);
+            }
+        }
 
         let prefix = key >> (self.no_levels - longest_prefix_length);
 
