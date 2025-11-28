@@ -3,6 +3,7 @@ use crate::binary_search_tree::BinarySearchTreeGroup;
 use crate::infix_store::InfixStore;
 use crate::x_fast_trie::XFastTrie;
 use std::sync::{Arc, RwLock};
+use std::fmt;
 
 pub struct YFastTrie {
     pub x_fast_trie: XFastTrie,
@@ -224,6 +225,63 @@ impl YFastTrie {
             }
         }
         false
+    }
+
+    pub fn pretty_print(&self) {
+        print!("{}", self);
+    }
+}
+
+impl fmt::Display for YFastTrie {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "\n╔════════════════════════════════════════════════════════╗")?;
+        writeln!(f, "║             Y-FAST TRIE STRUCTURE                      ║")?;
+        writeln!(f, "╚════════════════════════════════════════════════════════╝")?;
+
+        // print stats
+        writeln!(f, "\nStats:")?;
+        writeln!(f, "  Total keys:        {}", self.len())?;
+        writeln!(f, "  Sample count:      {}", self.sample_count())?;
+        writeln!(f, "  Levels:            {}", self.x_fast_trie.no_levels)?;
+
+        // print x-fast trie structure
+        write!(f, "{}", self.x_fast_trie)?;
+
+        // print BST groups for each representative
+        writeln!(f, "\n╔════════════════════════════════════════════════════════╗")?;
+        writeln!(f, "║             BST GROUPS (per representative)            ║")?;
+        writeln!(f, "╚════════════════════════════════════════════════════════╝\n")?;
+
+        if let Some(head) = &self.x_fast_trie.head_rep {
+            let mut current = Some(head.clone());
+            let mut bucket_index = 0;
+
+            while let Some(node) = current {
+                if let Ok(n) = node.read() {
+                    writeln!(f, "Bucket {} (representative: {})", bucket_index, n.key)?;
+
+                    if let Some(bst_group) = &n.bst_group {
+                        if let Ok(bst) = bst_group.read() {
+                            write!(f, "{}", bst)?;
+                        }
+                    } else {
+                        writeln!(f, "  (no BST group attached)")?;
+                    }
+
+                    current = n.right.as_ref().and_then(|w| w.upgrade());
+                    bucket_index += 1;
+                } else {
+                    break;
+                }
+            }
+        } else {
+            writeln!(f, "  (no buckets)")?;
+        }
+
+        writeln!(f, "\n╔════════════════════════════════════════════════════════╗")?;
+        writeln!(f, "║                    END Y-FAST TRIE                     ║")?;
+        writeln!(f, "╚════════════════════════════════════════════════════════╝\n")?;
+        Ok(())
     }
 }
 

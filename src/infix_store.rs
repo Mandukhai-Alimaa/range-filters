@@ -1,5 +1,6 @@
 use crate::bitmap::{get_bit, rank, set_bit};
 use crate::U64_BITS;
+use std::fmt;
 
 const TARGET_SIZE: u16 = 1024;
 // const LOAD_FACTOR: f64 = 0.95;
@@ -235,23 +236,29 @@ impl InfixStore {
     }
 
     pub fn pretty_print(&self) {
+        print!("{}", self);
+    }
+}
+
+impl fmt::Display for InfixStore {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let num_slots = SCALED_SIZES[self.size_grade as usize];
 
-        println!("*** InfixStore ***");
-        println!("elem_count: {}", self.elem_count);
-        println!("size_grade: {}", self.size_grade);
-        println!("num_slots: {}", num_slots);
-        println!("remainder_size: {} bits", self.remainder_size);
-        println!();
+        writeln!(f, "*** InfixStore ***")?;
+        writeln!(f, "elem_count: {}", self.elem_count)?;
+        writeln!(f, "size_grade: {}", self.size_grade)?;
+        writeln!(f, "num_slots: {}", num_slots)?;
+        writeln!(f, "remainder_size: {} bits", self.remainder_size)?;
+        writeln!(f)?;
 
-        println!("popcounts: 0x{:016x}", self.data[0]);
+        writeln!(f, "popcounts: 0x{:016x}", self.data[0])?;
         let occupieds_popcount = (self.data[0] & 0xFFFFFFFF) as u32;
         let runends_popcount = (self.data[0] >> 32) as u32;
-        println!("  occupieds_popcount: {}", occupieds_popcount);
-        println!("  runends_popcount: {}", runends_popcount);
-        println!();
+        writeln!(f, "  occupieds_popcount: {}", occupieds_popcount)?;
+        writeln!(f, "  runends_popcount: {}", runends_popcount)?;
+        writeln!(f)?;
 
-        println!("occupieds bitmap (showing set quotients):");
+        writeln!(f, "occupieds bitmap (showing set quotients):")?;
         let mut occupied_quotients = Vec::new();
         for q in 0..TARGET_SIZE as usize {
             if self.is_occupied(q) {
@@ -259,19 +266,19 @@ impl InfixStore {
             }
         }
         if occupied_quotients.is_empty() {
-            println!("  (none)");
+            writeln!(f, "  (none)")?;
         } else {
             for chunk in occupied_quotients.chunks(16) {
-                print!("  ");
+                write!(f, "  ")?;
                 for &q in chunk {
-                    print!("{} ", q);
+                    write!(f, "{} ", q)?;
                 }
-                println!();
+                writeln!(f)?;
             }
         }
-        println!();
+        writeln!(f)?;
 
-        println!("runends bitmap (showing runend positions):");
+        writeln!(f, "runends bitmap (showing runend positions):")?;
         let mut runend_positions = Vec::new();
         for pos in 0..num_slots as usize {
             if self.is_runend(pos) {
@@ -279,29 +286,30 @@ impl InfixStore {
             }
         }
         if runend_positions.is_empty() {
-            println!("  (none)");
+            writeln!(f, "  (none)")?;
         } else {
             for chunk in runend_positions.chunks(16) {
-                print!("  ");
+                write!(f, "  ")?;
                 for &pos in chunk {
-                    print!("{} ", pos);
+                    write!(f, "{} ", pos)?;
                 }
-                println!();
+                writeln!(f)?;
             }
         }
-        println!();
+        writeln!(f)?;
 
-        println!("slots (pos: value [runend]):");
+        writeln!(f, "slots (pos: value [runend]):")?;
         if self.elem_count == 0 {
-            println!("  (empty)");
+            writeln!(f, "  (empty)")?;
         } else {
             for i in 0..self.elem_count as usize {
                 let value = self.read_slot(i);
                 let is_runend = self.is_runend(i);
-                println!("  {}: {} {}", i, value, if is_runend { "[R]" } else { "" });
+                writeln!(f, "  {}: {} {}", i, value, if is_runend { "[R]" } else { "" })?;
             }
         }
-        println!("*************************");
+        writeln!(f, "*************************")?;
+        Ok(())
     }
 }
 

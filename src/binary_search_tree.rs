@@ -1,6 +1,7 @@
 use crate::Key;
 use crate::infix_store::InfixStore;
 use std::sync::{Arc, RwLock};
+use std::fmt;
 
 // #[derive(Debug, Default)]
 // pub struct InfixStore;
@@ -8,15 +9,15 @@ use std::sync::{Arc, RwLock};
 // TODO: add cached count
 #[derive(Debug, Default)]
 pub struct BinarySearchTreeGroup {
-    root: Option<Box<TreeNode>>,
+    pub root: Option<Box<TreeNode>>,
 }
 
 #[derive(Clone, Debug)]
-struct TreeNode {
-    key: Key,
-    left: Option<Box<TreeNode>>,
-    right: Option<Box<TreeNode>>,
-    infix_store: Option<Arc<RwLock<InfixStore>>>,
+pub struct TreeNode {
+    pub key: Key,
+    pub left: Option<Box<TreeNode>>,
+    pub right: Option<Box<TreeNode>>,
+    pub infix_store: Option<Arc<RwLock<InfixStore>>>,
 }
 
 impl BinarySearchTreeGroup {
@@ -298,35 +299,44 @@ impl BinarySearchTreeGroup {
     }
 
     pub fn pretty_print(&self) {
-        println!("\n=== Binary Search Tree ===");
-        if self.root.is_none() {
-            println!("  (empty tree)");
-        } else {
-            Self::print_tree(&self.root, "", true);
-        }
-        println!("=========================\n");
+        print!("{}", self);
     }
 
-    fn print_tree(node: &Option<Box<TreeNode>>, prefix: &str, is_tail: bool) {
+    fn format_tree(node: &Option<Box<TreeNode>>, prefix: &str, is_tail: bool, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(n) = node {
-            println!(
+            writeln!(
+                f,
                 "{}{} {}",
                 prefix,
                 if is_tail { "└──" } else { "├──" },
                 n.key
-            );
+            )?;
 
             let new_prefix = format!("{}{}", prefix, if is_tail { "    " } else { "│   " });
 
             if n.right.is_some() || n.left.is_some() {
                 if n.right.is_some() {
-                    Self::print_tree(&n.right, &new_prefix, false);
+                    Self::format_tree(&n.right, &new_prefix, false, f)?;
                 }
                 if n.left.is_some() {
-                    Self::print_tree(&n.left, &new_prefix, true);
+                    Self::format_tree(&n.left, &new_prefix, true, f)?;
                 }
             }
         }
+        Ok(())
+    }
+}
+
+impl fmt::Display for BinarySearchTreeGroup {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "\n=== Binary Search Tree ===")?;
+        if self.root.is_none() {
+            writeln!(f, "  (empty tree)")?;
+        } else {
+            Self::format_tree(&self.root, "", true, f)?;
+        }
+        writeln!(f, "=========================\n")?;
+        Ok(())
     }
 }
 

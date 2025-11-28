@@ -2,6 +2,7 @@ use crate::Key;
 use crate::binary_search_tree::BinarySearchTreeGroup;
 use dashmap::DashMap;
 use std::sync::{Arc, RwLock, Weak};
+use std::fmt;
 
 pub const ROOT_KEY: Key = 67;
 
@@ -363,19 +364,54 @@ impl XFastTrie {
     }
 
     pub fn pretty_print(&self) {
-        println!("\n=== X-Fast Trie Structure ===");
+        print!("{}", self);
+    }
 
-        println!("\nRepresentatives (Linked List):");
+    fn format_linked_list(start: &Arc<RwLock<RepNode>>, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Ok(node) = start.read() {
+            write!(f, "  {} ", node.key)?;
+
+            if let Some(right_weak) = &node.right {
+                if let Some(right_arc) = right_weak.upgrade() {
+                    write!(f, "→ ")?;
+                    Self::format_linked_list_helper(&right_arc, f)?;
+                }
+            }
+            writeln!(f)?;
+        }
+        Ok(())
+    }
+
+    fn format_linked_list_helper(node: &Arc<RwLock<RepNode>>, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Ok(node_guard) = node.read() {
+            write!(f, "{} ", node_guard.key)?;
+
+            if let Some(right_weak) = &node_guard.right {
+                if let Some(right_arc) = right_weak.upgrade() {
+                    write!(f, "→ ")?;
+                    Self::format_linked_list_helper(&right_arc, f)?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for XFastTrie {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "\n=== X-Fast Trie Structure ===")?;
+
+        writeln!(f, "\nRepresentatives (Linked List):")?;
         if let Some(head) = &self.head_rep {
-            self.print_linked_list(head.clone());
+            Self::format_linked_list(head, f)?;
         } else {
-            println!("  Empty");
+            writeln!(f, "  Empty")?;
         }
 
-        println!("\nTrie Levels:");
+        writeln!(f, "\nTrie Levels:")?;
         for (level, x_fast_level) in self.levels.iter().enumerate() {
             if !x_fast_level.table.is_empty() {
-                println!("  Level {} (prefix length {}):", level, level);
+                writeln!(f, "  Level {} (prefix length {}):", level, level)?;
                 let mut entries: Vec<_> = x_fast_level.table.iter().collect();
                 entries.sort_by_key(|entry| *entry.key());
 
@@ -388,58 +424,32 @@ impl XFastTrie {
                         format!("{:0width$b}", prefix, width = level)
                     };
 
-                    print!("    {}: ", prefix_str);
+                    write!(f, "    {}: ", prefix_str)?;
 
                     if let Some(min_rep) = &value.min_rep {
                         if let Ok(rep_guard) = min_rep.read() {
-                            print!("min_rep→{} ", rep_guard.key);
+                            write!(f, "min_rep→{} ", rep_guard.key)?;
                         }
                     }
                     if let Some(max_rep) = &value.max_rep {
                         if let Ok(rep_guard) = max_rep.read() {
-                            print!("max_rep→{} ", rep_guard.key);
+                            write!(f, "max_rep→{} ", rep_guard.key)?;
                         }
                     }
                     if value.left_child.is_some() {
-                        print!("L ");
+                        write!(f, "L ")?;
                     }
                     if value.right_child.is_some() {
-                        print!("R ");
+                        write!(f, "R ")?;
                     }
 
-                    println!();
+                    writeln!(f)?;
                 }
             }
         }
 
-        println!("\n=== End Structure ===\n");
-    }
-
-    fn print_linked_list(&self, start: Arc<RwLock<RepNode>>) {
-        if let Ok(node) = start.read() {
-            print!("  {} ", node.key);
-
-            if let Some(right_weak) = &node.right {
-                if let Some(right_arc) = right_weak.upgrade() {
-                    print!("→ ");
-                    self.print_linked_list_helper(right_arc);
-                }
-            }
-            println!();
-        }
-    }
-
-    fn print_linked_list_helper(&self, node: Arc<RwLock<RepNode>>) {
-        if let Ok(node_guard) = node.read() {
-            print!("{} ", node_guard.key);
-
-            if let Some(right_weak) = &node_guard.right {
-                if let Some(right_arc) = right_weak.upgrade() {
-                    print!("→ ");
-                    self.print_linked_list_helper(right_arc);
-                }
-            }
-        }
+        writeln!(f, "\n=== End Structure ===\n")?;
+        Ok(())
     }
 }
 
